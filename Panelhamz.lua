@@ -116,21 +116,13 @@ end)
 
 local function updateStats()
     cpuLabel.Text = "CPU: " .. math.floor(Stats:GetTotalMemoryUsageMb()) .. " MB"
+    
     local pingText = "N/A"
-    local robloxGui = game:GetService("CoreGui"):FindFirstChild("RobloxGui")
-    if robloxGui then
-        local perf = robloxGui:FindFirstChild("PerformanceStats")
-        if perf then
-            for _, v in ipairs(perf:GetChildren()) do
-                if v:FindFirstChild("StatsMiniTextPanelClass") then
-                    local titleLbl = v.StatsMiniTextPanelClass:FindFirstChild("TitleLabel")
-                    if titleLbl and titleLbl.Text == "Ping" then
-                        local val = v.StatsMiniTextPanelClass:FindFirstChild("ValueLabel")
-                        if val then pingText = val.Text end
-                        break
-                    end
-                end
-            end
+    local perfStats = Stats:FindFirstChild("PerformanceStats")
+    if perfStats then
+        local ping = perfStats:FindFirstChild("Ping")
+        if ping then
+            pingText = math.floor(ping:GetValue()) .. " ms"
         end
     end
     netLabel.Text = "Network: " .. pingText
@@ -140,14 +132,14 @@ RunService.Heartbeat:Connect(updateStats)
 local caughtCount = 0
 caughtLabel.Text = "Caught: " .. caughtCount
 local lastCaughtTime = 0
-local DETECT_COOLDOWN = 0.5
+local DETECT_COOLDOWN = 1.5
 
 playerGui.DescendantAdded:Connect(function(desc)
-    if desc:IsA("TextLabel") or desc:IsA("TextButton") then
+    if (desc:IsA("TextLabel") or desc:IsA("TextButton")) and desc.Text \~= "" then
         local text = desc.Text:lower()
         local now = tick()
         if now - lastCaughtTime > DETECT_COOLDOWN and
-           (text:find("caught") or text:find("you caught") or text:find("fish") or text:find("reel in")) then
+           (text:find("caught") or text:find("you caught") or text:find("fish") or text:find("reel")) then
             caughtCount += 1
             caughtLabel.Text = "Caught: " .. caughtCount
             caughtLabel.TextColor3 = Color3.fromRGB(255, 100, 0)
@@ -155,27 +147,6 @@ playerGui.DescendantAdded:Connect(function(desc)
                 caughtLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
             end)
             lastCaughtTime = now
-        end
-    end
-end)
-
-task.spawn(function()
-    local lastFishTotal = 0
-    while task.wait(2) do
-        local totalFish = 0
-        local inv = playerGui:FindFirstChild("Inventory") or playerGui:FindFirstChild("Backpack") or playerGui:FindFirstChild("FishingInventory") or player:FindFirstChild("Inventory")
-        if inv then
-            for _, item in ipairs(inv:GetDescendants()) do
-                if item:IsA("TextLabel") and item.Text:match("%d+") then
-                    totalFish += tonumber(item.Text:match("%d+")) or 0
-                end
-            end
-        end
-        if totalFish > lastFishTotal then
-            local added = totalFish - lastFishTotal
-            caughtCount += added
-            caughtLabel.Text = "Caught: " .. caughtCount
-            lastFishTotal = totalFish
         end
     end
 end)
