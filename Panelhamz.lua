@@ -9,7 +9,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FishItPanelV2"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
+screenGui.Parent = game:GetService("CoreGui")
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "Main"
@@ -82,6 +82,12 @@ caughtLabel.TextScaled = true
 caughtLabel.Parent = mainFrame
 
 local dragging, dragInput, dragStart, startPos
+
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
 mainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
@@ -95,10 +101,15 @@ mainFrame.InputBegan:Connect(function(input)
     end
 end)
 
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
 UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    if dragging and dragInput and input == dragInput then
+        updateInput(input)
     end
 end)
 
@@ -116,13 +127,23 @@ end)
 
 local function updateStats()
     cpuLabel.Text = "CPU: " .. math.floor(Stats:GetTotalMemoryUsageMb()) .. " MB"
-    
     local pingText = "N/A"
-    local perfStats = Stats:FindFirstChild("PerformanceStats")
-    if perfStats then
-        local ping = perfStats:FindFirstChild("Ping")
-        if ping then
-            pingText = math.floor(ping:GetValue()) .. " ms"
+    local robloxGui = game:GetService("CoreGui"):FindFirstChild("RobloxGui")
+    if robloxGui then
+        local perfStats = robloxGui:FindFirstChild("PerformanceStats")
+        if perfStats then
+            for _, panel in ipairs(perfStats:GetChildren()) do
+                if panel:IsA("Frame") and panel:FindFirstChild("StatsMiniTextPanelClass") then
+                    local titleLbl = panel.StatsMiniTextPanelClass:FindFirstChild("TitleLabel")
+                    if titleLbl and titleLbl.Text == "Ping" then
+                        local valueLbl = panel.StatsMiniTextPanelClass:FindFirstChild("ValueLabel")
+                        if valueLbl then
+                            pingText = valueLbl.Text
+                            break
+                        end
+                    end
+                end
+            end
         end
     end
     netLabel.Text = "Network: " .. pingText
